@@ -1,140 +1,1897 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POS System Design Document for MAXIBREW</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/view-transition/1.0.0/view-transition.min.css">
-    <style>
-        body { font-family: Arial, sans-serif; margin: 0; }
-        header { background: #f4f4f4; padding: 10px; position: sticky; top: 0; z-index: 1000; }
-        nav { display: flex; overflow-x: auto; }
-        nav a { padding: 10px; text-decoration: none; color: #333; }
-        section { padding: 20px; }
-        code { background: #eaeaea; padding: 5px; border-radius: 3px; }
-        @media (max-width: 600px) { nav a { flex: 1; }
-    </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.0.0/mermaid.min.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            mermaid.initialize({startOnLoad:true});
-        });
-    </script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="color-scheme" content="dark light" />
+  <title>MAXIBREW POS — System Design (Interactive)</title>
+  <meta name="description" content="MAXIBREW POS system design — interactive, minimal, fast. 18 sections + Appendix." />
+
+  <style>
+    /* Provided view-transition tuning */
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*) {
+      animation-duration: 0.25s;
+      animation-timing-function: cubic-bezier(0.19, 1, 0.22, 1);
+    }
+
+    :root{
+      /* Dark default */
+      --bg: #0b0d12;
+      --panel: #0f131c;
+      --panel2: #0c1018;
+      --text: #e6e9ef;
+      --muted: #a2aabc;
+      --border: rgba(255,255,255,.10);
+      --shadow: rgba(0,0,0,.45);
+      --accent: #8ab4f8;
+      --accent2:#9aa4b2;
+      --good:#2ecc71;
+      --warn:#f1c40f;
+      --bad:#e74c3c;
+
+      --radius: 12px;
+      --radiusSm: 10px;
+      --maxw: 1120px;
+
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+      --focus: 0 0 0 3px color-mix(in srgb, var(--accent), transparent 65%);
+    }
+
+    @media (prefers-color-scheme: light){
+      :root{
+        --bg:#f7f8fb;
+        --panel:#ffffff;
+        --panel2:#fafbff;
+        --text:#101828;
+        --muted:#475467;
+        --border: rgba(16,24,40,.12);
+        --shadow: rgba(16,24,40,.12);
+        --accent:#175cd3;
+        --accent2:#667085;
+      }
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:var(--sans);
+      color:var(--text);
+      background:
+        radial-gradient(1100px 700px at 15% -10%, rgba(138,180,248,.10), transparent 60%),
+        radial-gradient(900px 650px at 95% 0%, rgba(154,164,178,.08), transparent 55%),
+        var(--bg);
+      line-height:1.55;
+    }
+    a{color:inherit;text-decoration:none}
+    a:hover{text-decoration:underline}
+    :focus-visible{ outline: none; box-shadow: var(--focus); border-radius: 10px; }
+
+    header{
+      position:sticky;
+      top:0;
+      z-index:50;
+      backdrop-filter: blur(10px);
+      background: color-mix(in srgb, var(--bg), transparent 18%);
+      border-bottom:1px solid var(--border);
+    }
+
+    .topbar{
+      max-width:var(--maxw);
+      margin:0 auto;
+      padding:10px 12px 12px;
+    }
+
+    .row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+
+    .brand{min-width:0}
+    .brand h1{
+      margin:0;
+      font-size:14px;
+      font-weight:650;
+      letter-spacing:.2px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .brand p{
+      margin:2px 0 0;
+      font-size:12px;
+      color:var(--muted);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:2px 8px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      font-size:12px;
+      color:var(--muted);
+      background:color-mix(in srgb, var(--panel2), transparent 0%);
+      white-space:nowrap;
+    }
+
+    .search{
+      position:relative;
+      flex:1 1 520px;
+      min-width:260px;
+      max-width:760px;
+    }
+
+    .search input{
+      width:100%;
+      padding:10px 12px 10px 34px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:var(--panel);
+      color:var(--text);
+      outline:none;
+      box-shadow: 0 14px 40px -30px var(--shadow);
+    }
+
+    .search input::placeholder{
+      color:color-mix(in srgb, var(--muted), transparent 0%);
+    }
+
+    .search .icon{
+      position:absolute;
+      left:12px;
+      top:50%;
+      transform:translateY(-50%);
+      color:var(--muted);
+      font-size:12px;
+      opacity:.9;
+      user-select:none;
+      pointer-events:none;
+    }
+
+    .jump{
+      position:absolute;
+      left:0;
+      right:0;
+      top:calc(100% + 8px);
+      border:1px solid var(--border);
+      border-radius:14px;
+      background:var(--panel);
+      box-shadow:0 22px 70px -48px var(--shadow);
+      overflow:hidden;
+      display:none;
+    }
+    .jump.open{display:block}
+    .jumpItem{
+      padding:10px 12px;
+      border-bottom:1px solid var(--border);
+      cursor:pointer;
+      color:var(--muted);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      font-size:13px;
+    }
+    .jumpItem:last-child{border-bottom:none}
+    .jumpItem strong{color:var(--text);font-weight:650}
+    .jumpItem:hover{
+      background:color-mix(in srgb, var(--accent), transparent 92%);
+      color:var(--text);
+    }
+
+    .tabs{
+      display:flex;
+      gap:8px;
+      overflow:auto;
+      padding:10px 2px 0;
+      scrollbar-width:thin;
+    }
+    .tabs::-webkit-scrollbar{height:8px}
+    .tabs::-webkit-scrollbar-thumb{
+      background:color-mix(in srgb, var(--muted), transparent 70%);
+      border-radius:999px;
+    }
+
+    .tab{
+      flex:0 0 auto;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:color-mix(in srgb, var(--panel2), transparent 0%);
+      color:var(--muted);
+      font-size:12px;
+      line-height:1;
+      user-select:none;
+    }
+    .tab:hover{
+      color:var(--text);
+      border-color:color-mix(in srgb, var(--accent2), transparent 55%);
+      text-decoration:none;
+    }
+    .tab[aria-current="page"]{
+      color:var(--text);
+      border-color:color-mix(in srgb, var(--accent), transparent 35%);
+      background:color-mix(in srgb, var(--accent), transparent 88%);
+    }
+
+    main{ view-transition-name: page; }
+    .wrap{ max-width:var(--maxw); margin:0 auto; padding:22px 16px 72px; }
+
+    .card{
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:0 16px 42px -32px var(--shadow);
+      padding:18px 16px;
+    }
+
+    .hero h2{
+      margin:0 0 8px;
+      font-size:18px;
+      letter-spacing:.2px;
+    }
+    .hero p{ margin:0; color:var(--muted); }
+
+    .metaGrid{
+      display:grid;
+      gap:10px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      margin-top:12px;
+    }
+    @media (max-width: 880px){
+      .metaGrid{ grid-template-columns:1fr; }
+      .search{ min-width: 200px; }
+    }
+
+    .subcard{
+      border:1px solid var(--border);
+      border-radius:var(--radiusSm);
+      background:var(--panel2);
+      padding:12px 12px;
+    }
+
+    .section{
+      display:none;
+      margin-top:16px;
+    }
+    .section.active{ display:block; }
+
+    .kicker{
+      font-size:12px;
+      color:var(--muted);
+      margin:0 0 8px;
+    }
+    h3{ margin:0 0 10px; font-size:16px; letter-spacing:.2px; }
+    h4{ margin:0 0 6px; font-size:13px; color:var(--text); }
+
+    .grid2{
+      display:grid;
+      gap:12px;
+      grid-template-columns: 1.1fr .9fr;
+      align-items:start;
+    }
+    @media (max-width: 980px){
+      .grid2{ grid-template-columns:1fr; }
+    }
+
+    ul{ margin:8px 0 0; padding-left:18px; color:var(--muted); }
+    li{ margin:4px 0; }
+    .hr{ height:1px; background:var(--border); margin:12px 0; }
+
+    pre{
+      margin:10px 0 0;
+      border:1px solid var(--border);
+      background:color-mix(in srgb, #000, transparent 65%);
+      border-radius:12px;
+      overflow:auto;
+      padding:12px;
+    }
+    @media (prefers-color-scheme: light){
+      pre{ background:#0b1220; }
+    }
+    code{
+      font-family:var(--mono);
+      font-size:12px;
+      color:#e6edf3;
+    }
+
+    .codebar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+      margin-top:8px;
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .copy{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:6px 10px;
+      border-radius:10px;
+      border:1px solid var(--border);
+      background:var(--panel);
+      color:var(--muted);
+      cursor:pointer;
+      user-select:none;
+    }
+    .copy:hover{
+      color:var(--text);
+      border-color:color-mix(in srgb, var(--accent2), transparent 55%);
+    }
+    .copy:active{ transform:translateY(1px); }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+      margin-top:10px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      overflow:hidden;
+      font-size:13px;
+    }
+    th,td{
+      padding:10px 10px;
+      border-bottom:1px solid var(--border);
+      text-align:left;
+      vertical-align:top;
+    }
+    th{
+      background:var(--panel2);
+      color:var(--text);
+      font-weight:650;
+    }
+    td{
+      background:var(--panel);
+      color:var(--muted);
+    }
+    tr:last-child td{ border-bottom:none; }
+
+    .callout{
+      border-left:3px solid color-mix(in srgb, var(--accent), transparent 20%);
+      background:color-mix(in srgb, var(--accent), transparent 92%);
+      border-radius:10px;
+      padding:10px 12px;
+      margin-top:10px;
+      color:var(--text);
+    }
+
+    .footer{
+      margin-top:20px;
+      color:var(--muted);
+      font-size:12px;
+      text-align:center;
+    }
+
+    .srOnly{
+      position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;
+    }
+
+    .tocLinks a{
+      text-decoration: underline;
+      text-decoration-color: color-mix(in srgb, var(--muted), transparent 50%);
+    }
+  </style>
 </head>
+
 <body>
-<header>
-    <nav>
-        <a href="#overview">Overview</a>
-        <a href="#architecture">Architecture</a>
-        <a href="#data-flow">Data Flow</a>
-        <a href="#user-interface">User Interface</a>
-        <a href="#database-schema">Database Schema</a>
-        <a href="#api-design">API Design</a>
-        <a href="#security">Security</a>
-        <a href="#performance">Performance</a>
-        <a href="#testing">Testing</a>
-        <a href="#deployment">Deployment</a>
-        <a href="#maintenance">Maintenance</a>
-        <a href="#versioning">Versioning</a>
-        <a href="#compliance">Compliance</a>
-        <a href="#scalability">Scalability</a>
-        <a href="#optimizations">Optimizations</a>
-        <a href="#monitoring">Monitoring</a>
-        <a href="#logging">Logging</a>
-        <a href="#feedback">Feedback</a>
-        <a href="#training">Training</a>
-        <a href="#documentation">Documentation</a>
-        <a href="#appendix">Appendix</a>
-    </nav>
+<header role="banner">
+  <div class="topbar">
+    <div class="row">
+      <div class="brand">
+        <h1>MAXIBREW POS — System Design</h1>
+        <p>Interactive, minimal reference · 18 sections + Appendix · Search, copy buttons, Mermaid diagrams</p>
+      </div>
+      <span class="badge" title="Optimized as a single-file design doc for GitHub Pages">Single-page doc</span>
+    </div>
+
+    <div class="row" style="margin-top:10px">
+      <div class="search" role="search">
+        <span class="icon">⌘K</span>
+        <label class="srOnly" for="q">Search / quick jump</label>
+        <input id="q" type="search" autocomplete="off" spellcheck="false"
+               placeholder="Search / quick jump (e.g., idempotency, SELECT FOR UPDATE, FSM, Kafka, GST)…" />
+        <div id="jump" class="jump" aria-label="Search results"></div>
+      </div>
+      <span class="badge" title="Keyboard: Ctrl/Cmd+K to focus; Enter to jump; Esc to close">Ctrl/Cmd+K</span>
+    </div>
+
+    <nav id="tabs" class="tabs" role="tablist" aria-label="Sections"></nav>
+  </div>
 </header>
-<section id="overview">
-    <h1>Overview</h1>
-    <p>This document outlines the design for a mobile-responsive interactive POS system tailored for MAXIBREW, focusing on efficiency and user experience.</p>
-</section>
-<section id="architecture">
-    <h2>Architecture</h2>
-    <p>Describe the system architecture here.</p>
-</section>
-<section id="data-flow">
-    <h2>Data Flow</h2>
-    <p>Illustrate how data flows through the system.</p>
-</section>
-<section id="user-interface">
-    <h2>User Interface</h2>
-    <p>Details about the user interface components.</p>
-</section>
-<section id="database-schema">
-    <h2>Database Schema</h2>
-    <p>Present the database schema designs.</p>
-</section>
-<section id="api-design">
-    <h2>API Design</h2>
-    <p>Outline the structure and usage of the API.</p>
-</section>
-<section id="security">
-    <h2>Security</h2>
-    <p>Discuss security measures in place.</p>
-</section>
-<section id="performance">
-    <h2>Performance</h2>
-    <p>Strategies to optimize performance are outlined.</p>
-</section>
-<section id="testing">
-    <h2>Testing</h2>
-    <p>Describe the testing approach.</p>
-</section>
-<section id="deployment">
-    <h2>Deployment</h2>
-    <p>Details on deployment strategies.</p>
-</section>
-<section id="maintenance">
-    <h2>Maintenance</h2>
-    <p>Discuss maintenance routines and practices.</p>
-</section>
-<section id="versioning">
-    <h2>Versioning</h2>
-    <p>Introduction of the versioning strategy.</p>
-</section>
-<section id="compliance">
-    <h2>Compliance</h2>
-    <p>Explain compliance with regulations and policies.</p>
-</section>
-<section id="scalability">
-    <h2>Scalability</h2>
-    <p>Outline scalability considerations.</p>
-</section>
-<section id="optimizations">
-    <h2>Optimizations</h2>
-    <p>Detail optimization approaches and tactics.</p>
-</section>
-<section id="monitoring">
-    <h2>Monitoring</h2>
-    <p>Discuss monitoring and analytical tools used.</p>
-</section>
-<section id="logging">
-    <h2>Logging</h2>
-    <p>Explain the logging mechanism.</p>
-</section>
-<section id="feedback">
-    <h2>Feedback</h2>
-    <p>Describe the feedback gathering process.</p>
-</section>
-<section id="training">
-    <h2>Training</h2>
-    <p>Outline training methods and material.</p>
-</section>
-<section id="documentation">
-    <h2>Documentation</h2>
-    <p>Discuss the documentation practices.</p>
-</section>
-<section id="appendix">
-    <h2>Appendix</h2>
-    <ul>
-        <li>Permission Matrix</li>
-        <li>API Idempotency Rules</li>
-        <li>Event Catalog</li>
-        <li>Excel Schema Dictionary</li>
-    </ul>
-</section>
+
+<main class="wrap" id="app" role="main">
+  <section class="card hero">
+    <h2>Document contract</h2>
+    <p>
+      Each section follows the same shape:
+      <strong>overview → key decisions → flow → logic/algorithms → edge cases → scaling</strong>.
+      The Appendix contains reference tables used by the system.
+    </p>
+
+    <div class="metaGrid">
+      <div class="subcard">
+        <div class="kicker">Correctness first</div>
+        <ul>
+          <li>Inventory deductions are atomic + logged.</li>
+          <li>Billing/refunds are auditable.</li>
+          <li>State transitions follow a strict FSM.</li>
+        </ul>
+      </div>
+      <div class="subcard">
+        <div class="kicker">Operational clarity</div>
+        <ul>
+          <li>Idempotency keys for all mutations.</li>
+          <li>Webhook ACK fast, process async.</li>
+          <li>Events after commit; consumers idempotent.</li>
+        </ul>
+      </div>
+      <div class="subcard">
+        <div class="kicker">Scale path</div>
+        <ul>
+          <li>Modular monolith → selective extraction.</li>
+          <li>Redis Pub/Sub now; Kafka when justified.</li>
+          <li>Async exports + aggregates for reporting.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout">
+      This design is implementation-ready but intentionally technology-agnostic where choices don’t affect correctness.
+      Adjust tax compliance, receipt format rules, and payment provider details to your region.
+    </div>
+  </section>
+
+  <section id="sections"></section>
+  <div class="footer">MAXIBREW · POS System Design (Interactive)</div>
+</main>
+
+<script>
+  /* Lazy-load Mermaid (renders embedded diagrams) */
+  (function(){
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js';
+    s.async = true;
+    s.onload = () => {
+      try{
+        mermaid.initialize({
+          startOnLoad:false,
+          securityLevel:'strict',
+          theme: (matchMedia && matchMedia('(prefers-color-scheme: light)').matches) ? 'neutral' : 'dark',
+          fontFamily: 'ui-sans-serif, system-ui',
+          flowchart:{curve:'basis'}
+        });
+        window.__mermaidReady = true;
+        renderMermaidIn(document);
+      }catch(e){ console.warn('Mermaid init failed', e); }
+    };
+    document.head.appendChild(s);
+  })();
+
+  function renderMermaidIn(root){
+    if (!window.__mermaidReady) return;
+    const nodes = root.querySelectorAll('pre.mermaid, div.mermaid');
+    nodes.forEach((node) => {
+      if (node.getAttribute('data-rendered') === '1') return;
+      const src = node.textContent;
+      const container = document.createElement('div');
+      container.className = 'mermaid';
+      container.textContent = src;
+      node.replaceWith(container);
+      try{
+        mermaid.run({ nodes: [container] });
+        container.setAttribute('data-rendered','1');
+      }catch(e){ console.warn('Mermaid render failed', e); }
+    });
+  }
+</script>
+
+<script>
+  const SECTIONS = [
+    { id:'architecture',  label:'1. Architecture' },
+    { id:'database',      label:'2. Database' },
+    { id:'order-fsm',     label:'3. Order State Machine' },
+    { id:'billing',       label:'4. Billing Engine' },
+    { id:'inventory',     label:'5. Inventory Engine' },
+    { id:'financials',    label:'6. Financial Engine' },
+    { id:'api',           label:'7. API Design' },
+    { id:'events',        label:'8. Events' },
+    { id:'concurrency',   label:'9. Concurrency' },
+    { id:'offline',       label:'10. Offline Mode' },
+    { id:'caching',       label:'11. Caching Strategy' },
+    { id:'complexity',    label:'12. Time Complexity Targets' },
+    { id:'permissions',   label:'13. Permission Matrix' },
+    { id:'ui-flows',      label:'14. UI Flows' },
+    { id:'integrations',  label:'15. Swiggy/Zomato Integration Pipeline' },
+    { id:'failure-modes', label:'16. Failure Modes' },
+    { id:'scaling',       label:'17. 3-Phase Scaling Plan' },
+    { id:'excel',         label:'18. Excel Column Dictionary' },
+    { id:'appendix',      label:'Appendix' }
+  ];
+
+  const KEYWORDS = {
+    architecture:  ['modular monolith','stack','data flow','microservices','deployment'],
+    database:      ['postgres','schema','constraints','indexes','check current_stock'],
+    'order-fsm':   ['fsm','state machine','bullmq','invalid transition','role gated'],
+    billing:       ['gst','split payments','invoice','refund','complimentary'],
+    inventory:     ['select for update','inventory_log','atomic','deduction','locking'],
+    financials:    ['p&l','cogs','expenses','commission','channels'],
+    api:           ['idempotency','hmac','webhook','async processing','versioning'],
+    events:        ['redis pubsub','kafka','consumer','schema version','outbox'],
+    concurrency:   ['serializable','deadlock','retry','advisory locks'],
+    offline:       ['indexeddb','sync queue','conflict resolution','server truth'],
+    caching:       ['ttl','cache bust','stale while revalidate','redis'],
+    complexity:    ['p95','latency targets','big o','hot paths'],
+    permissions:   ['rbac','manager override','audit','roles'],
+    'ui-flows':    ['pos ui','kitchen display','kds','taps','shortcuts'],
+    integrations:  ['swiggy','zomato','eventId','dedupe','signature'],
+    'failure-modes':['retry policy','rollback','reconciliation','dlq'],
+    scaling:       ['phases','read replica','kafka trigger','service extraction'],
+    excel:         ['exports','csv','xlsx','columns','dictionary'],
+    appendix:      ['permission matrix','event catalog','error codes','idempotency rules','excel dictionary']
+  };
+
+  function esc(s){
+    return String(s).replace(/[&<>"']/g, c => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[c]));
+  }
+
+  function codeBlock(lang, code){
+    const id = 'code-' + Math.random().toString(16).slice(2);
+    return `
+      <div>
+        <div class="codebar">
+          <span class="badge">${esc(lang)}</span>
+          <button class="copy" type="button" data-copy="${esc(id)}">Copy</button>
+        </div>
+        <pre id="${esc(id)}"><code>${esc(code)}</code></pre>
+      </div>
+    `;
+  }
+
+  function mermaidBlock(src){
+    return `<pre class="mermaid">${esc(src)}</pre>`;
+  }
+
+  function sectionTemplate(id, title, blocks){
+    const {overview, decisions, flow, logic, edges, scaling, extras} = blocks;
+    return `
+      <article class="section" id="${esc(id)}" tabindex="-1">
+        <div class="card">
+          <div class="kicker">${esc(title)}</div>
+          <h3>${esc(title)}</h3>
+
+          <div class="grid2">
+            <div class="subcard">
+              <h4>Overview</h4>
+              ${overview}
+            </div>
+            <div class="subcard">
+              <h4>Key decisions</h4>
+              ${decisions}
+            </div>
+          </div>
+
+          <div class="hr"></div>
+
+          <div class="subcard">
+            <h4>Flow</h4>
+            ${flow}
+          </div>
+
+          <div class="hr"></div>
+
+          <div class="grid2">
+            <div class="subcard">
+              <h4>Logic / algorithms</h4>
+              ${logic}
+            </div>
+            <div class="subcard">
+              <h4>Edge cases</h4>
+              ${edges}
+            </div>
+          </div>
+
+          <div class="hr"></div>
+
+          <div class="subcard">
+            <h4>Scaling</h4>
+            ${scaling}
+          </div>
+
+          ${extras ? `<div class="hr"></div>${extras}` : ``}
+        </div>
+      </article>
+    `;
+  }
+
+  function render(){
+    // Tabs
+    document.getElementById('tabs').innerHTML = SECTIONS.map(s => (
+      `<a class="tab" role="tab" data-tab="${esc(s.id)}" href="#${esc(s.id)}">${esc(s.label)}</a>`
+    )).join('');
+
+    const html = [];
+
+    // 1. Architecture
+    html.push(sectionTemplate('architecture','1. Architecture', {
+      overview: `
+        <p class="kicker">
+          Modular monolith-first to ship quickly and keep correctness-critical domains (inventory + billing) in a single ACID boundary.
+        </p>
+        <ul>
+          <li><strong>UI:</strong> Tablet-first POS web app (responsive). Optional KDS (kitchen display) view later.</li>
+          <li><strong>Backend:</strong> Modular monolith (Orders, Billing, Inventory, Integrations, Reporting, AuthZ).</li>
+          <li><strong>DB:</strong> PostgreSQL system-of-record.</li>
+          <li><strong>Infra:</strong> Redis (cache + queues), object storage for exports, observability stack.</li>
+        </ul>
+      `,
+      decisions: `
+        <ul>
+          <li>Keep <strong>inventory deduction</strong> + <strong>invoice/payment commit</strong> in the same DB transaction.</li>
+          <li>Webhooks: respond fast (< 5s) and do heavy processing async.</li>
+          <li>Emit events <strong>after commit</strong>; consumers must be idempotent.</li>
+          <li>Microservices only when there is a measurable scaling/ownership need.</li>
+        </ul>
+      `,
+      flow: `
+        ${mermaidBlock(`
+flowchart LR
+  POS[POS UI] -->|REST| API[Backend (Modular Monolith)]
+  API -->|TX| DB[(PostgreSQL)]
+  API --> Cache[(Redis Cache)]
+  API --> Q[(BullMQ / Redis Queue)]
+  API -->|publish| Pub[Redis Pub/Sub]
+  Pub --> KDS[Kitchen Display Consumer]
+  Pub --> Rep[Reporting Consumer]
+  Pub --> Notif[Notification Consumer]
+  Platforms[Swiggy/Zomato] -->|Webhooks| API
+  API -->|Outbound API| Platforms
+        `.trim())}
+        <div class="callout"><strong>Critical path:</strong> create order → price/tax → deduct inventory → persist invoice + audit → return receipt.</div>
+      `,
+      logic: codeBlock('pseudocode', `
+BEGIN TX
+  validate(cart, actor, permissions)
+  totals = billing.compute(cart, taxConfig, discounts)
+  inventory.deductForSale(orderId, cart)      -- SELECT FOR UPDATE
+  orders.create(orderId, status=PLACED, ...)
+  invoices.create(orderId, totalsSnapshot)
+  payments.capture(orderId, splitPayments)
+  audit.log("OrderPaid", actor, orderId, payloadSnapshot)
+COMMIT
+
+publishEvent(OrderPaid)
+      `.trim()),
+      edges: `
+        <ul>
+          <li>UI retry/double-tap: idempotency keys prevent duplicate order/payment.</li>
+          <li>Concurrent sales: row locks serialize inventory updates; retry on serialization failures.</li>
+          <li>Platform timeouts: webhook ACK immediately, processing happens async.</li>
+        </ul>
+      `,
+      scaling: `
+        <ul>
+          <li><strong>Phase 1:</strong> one store, modular monolith, Redis queues, Redis Pub/Sub.</li>
+          <li><strong>Phase 2:</strong> multi-branch, worker pool, read replica for analytics, stronger caching.</li>
+          <li><strong>Phase 3:</strong> extract high-pressure components (webhooks/report exports) + Kafka for durable streams.</li>
+        </ul>
+      `
+    }));
+
+    // 2. Database
+    html.push(sectionTemplate('database','2. Database', {
+      overview: `
+        <p class="kicker">Relational schema with explicit constraints to protect financial/inventory correctness.</p>
+        <ul>
+          <li>Invoice totals stored as snapshots for replayability/audit.</li>
+          <li>Inventory mutations logged in <code>inventory_log</code> (append-only).</li>
+          <li>Constraints enforce invariants (e.g., non-negative stock).</li>
+        </ul>
+      `,
+      decisions: `
+        <ul>
+          <li>PostgreSQL is the source of truth.</li>
+          <li><strong>CHECK (current_stock &gt;= 0)</strong> is the last line of defense against silent negative stock.</li>
+          <li>Use indexes for hot paths: recent orders, order lookups, inventory logs by date.</li>
+        </ul>
+      `,
+      flow: `
+        <p class="kicker">Core data flow: products/recipes → orders/items → payments/invoices → inventory_log → reporting aggregates.</p>
+      `,
+      logic: codeBlock('SQL', `
+-- Raw materials (stock controlled)
+create table raw_materials (
+  id uuid primary key,
+  branch_id uuid not null,
+  name text not null,
+  uom text not null, -- g/ml/unit
+  current_stock numeric(14,3) not null default 0,
+  reorder_level numeric(14,3) not null default 0,
+  check (current_stock >= 0)
+);
+
+-- Every stock mutation must be logged
+create table inventory_log (
+  id uuid primary key,
+  branch_id uuid not null,
+  order_id uuid null,
+  raw_material_id uuid not null,
+  delta numeric(14,3) not null, -- negative=deduction
+  reason text not null,         -- SALE/REFUND/WASTAGE/ADJUSTMENT
+  created_at timestamptz not null default now()
+);
+
+create index idx_inventory_log_branch_created
+  on inventory_log(branch_id, created_at desc);
+      `.trim()),
+      edges: `
+        <ul>
+          <li>Recipe updates: version recipes or store recipe snapshot used at sale time to compute historical COGS.</li>
+          <li>Refunds: never delete; insert refund records + audit and (optional) restock inventory.</li>
+          <li>Clock/timezone: store timestamptz, group by branch timezone for business-day reports.</li>
+        </ul>
+      `,
+      scaling: `
+        <ul>
+          <li>Partition large append-only tables (inventory_log, audit_log) by month.</li>
+          <li>Use read replicas for reporting; keep OLTP writes on primary.</li>
+          <li>Introduce daily aggregates tables for dashboards and Excel exports.</li>
+        </ul>
+      `
+    }));
+
+    // 3. Order FSM
+    html.push(sectionTemplate('order-fsm','3. Order State Machine', {
+      overview: `
+        <p class="kicker">Strict FSM to avoid “impossible states” and to enforce role-based cancellations/refunds.</p>
+        <ul>
+          <li>Backend validates all transitions; UI never assumes it can transition.</li>
+          <li>Kitchen steps (ACCEPTED → IN_PREP → READY) are operationally separate from payment.</li>
+          <li>Refund is only allowed from COMPLETED (or PAID state if you model it separately).</li>
+        </ul>
+      `,
+      decisions: `
+        <ul>
+          <li>Central transition table (allowed transitions) in code.</li>
+          <li>Role-gated cancellations; require reason for sensitive operations.</li>
+          <li>BullMQ recovery job: detect stuck orders (e.g., IN_PREP too long) and alert.</li>
+        </ul>
+      `,
+      flow: `
+        ${mermaidBlock(`
+stateDiagram-v2
+  [*] --> DRAFT
+  DRAFT --> PLACED: place()
+  PLACED --> ACCEPTED: accept()
+  ACCEPTED --> IN_PREP: startPrep()
+  IN_PREP --> READY: markReady()
+  READY --> COMPLETED: complete()
+
+  PLACED --> CANCELLED: cancel()
+  ACCEPTED --> CANCELLED: managerCancel()
+  IN_PREP --> CANCELLED: managerCancel(reason)
+
+  COMPLETED --> REFUNDED: refund()
+
+  CANCELLED --> [*]
+  REFUNDED --> [*]
+        `.trim())}
+      `,
+      logic: codeBlock('pseudocode', `
+allowed = {
+  DRAFT:     ['PLACED'],
+  PLACED:    ['ACCEPTED','CANCELLED'],
+  ACCEPTED:  ['IN_PREP','CANCELLED'],
+  IN_PREP:   ['READY','CANCELLED'],
+  READY:     ['COMPLETED'],
+  COMPLETED: ['REFUNDED'],
+  CANCELLED: [],
+  REFUNDED:  []
+}
+
+function transition(order, to, actor):
+  if to not in allowed[order.status]: throw INVALID_TRANSITION
+  if !isAllowedByRole(order.status, to, actor.role): throw FORBIDDEN
+  update order.status = to
+  audit.log("OrderTransitioned", {from: order.status, to, actor})
+      `.trim()),
+      edges: `
+        <ul>
+          <li>Duplicate transition requests: idempotency keys on transition endpoints.</li>
+          <li>Out-of-order platform events: store receipts and reconcile with platform order state.</li>
+          <li>Cancellation after inventory deduction: either restock (if policy) or keep as wastage; always audit.</li>
+        </ul>
+      `,
+      scaling: `
+        <ul>
+          <li>Emit <code>OrderStatusChanged</code> events for KDS, notifications, analytics.</li>
+          <li>Introduce outbox table when event delivery must be strongly guaranteed.</li>
+        </ul>
+      `
+    }));
+
+    // 4. Billing
+    html.push(sectionTemplate('billing','4. Billing Engine', {
+      overview: `
+        <p class="kicker">Billing is deterministic, explainable, and auditable; supports split payments and refunds.</p>
+        <ul>
+          <li>All amounts computed from line items + tax + discount rules.</li>
+          <li>Split payment: multiple payment rows per order.</li>
+          <li>Complimentary orders are manager-only with a required reason.</li>
+        </ul>
+      `,
+      decisions: `
+        <ul>
+          <li>Store invoice snapshot: subtotal, GST, discounts, total, rounding policy.</li>
+          <li>Refund workflow is append-only with explicit linkage to original payment/invoice.</li>
+          <li>Mandatory audit logs for complimentary/refund/cancel after prep.</li>
+        </ul>
+      `,
+      flow: `
+        <p class="kicker">Compute totals → capture payments → finalize invoice → publish events → optional receipt print/export.</p>
+      `,
+      logic: codeBlock('pseudocode', `
+function computeTotals(items, gstRate, discounts):
+  subtotal = sum(items.qty * items.unitPrice)
+  gst = round(subtotal * gstRate, 2)
+  discount = computeDiscount(discounts, subtotal)
+  total = max(0, subtotal + gst - discount)
+  return {subtotal, gst, discount, total}
+
+if complimentary:
+  require role == MANAGER
+  require reason
+  totals.total = 0
+  audit.log("ComplimentaryApproved", {...})
+      `.trim()),
+      edges: `
+        <ul>
+          <li>Rounding: define once (e.g., round half up to 2 decimals) and apply everywhere.</li>
+          <li>Partial refund: record as separate refund row; adjust reporting.</li>
+          <li>Payment provider success but invoice failure: reconcile by provider reference + idempotency.</li>
+        </ul>
+      `,
+      scaling: `
+        <ul>
+          <li>Tax rules versioned by effective date and branch if needed.</li>
+          <li>Billing ledger aggregates for fast dashboards and exports.</li>
+        </ul>
+      `
+    }));
+
+    // 5. Inventory
+    html.push(sectionTemplate('inventory','5. Inventory Engine', {
+      overview: `
+        <p class="kicker">Inventory correctness is enforced using row-level locks, transaction boundaries, and mandatory inventory_log entries.</p>
+        <ul>
+          <li>Deduct raw materials based on recipes and quantities sold.</li>
+          <li>Atomic deduction: no partial deductions; fail the transaction if any material is insufficient.</li>
+          <li>Display stock is “best effort”; deductions always run against locked DB rows.</li>
+        </ul>
+      `,
+      decisions: `
+        <ul>
+          <li><strong>SELECT … FOR UPDATE</strong> for materials touched by an order.</li>
+          <li>Write <code>inventory_log</code> entry for every stock change.</li>
+          <li>DB constraint <code>current_stock &gt;= 0</code> + app validation (two layers).</li>
+        </ul>
+      `,
+      flow: `
+        ${mermaidBlock(`
+sequenceDiagram
+  participant API
+  participant DB
+  API->>DB: BEGIN
+  API->>DB: SELECT raw_materials FOR UPDATE (materials in order)
+  API->>DB: Validate current_stock >= needed
+  API->>DB: UPDATE raw_materials (deduct)
+  API->>DB: INSERT inventory_log (delta=-needed)
+  API->>DB: COMMIT
+        `.trim())}
+      `,
+      logic: codeBlock('SQL', `
+begin;
+
+-- Lock rows in a stable order to reduce deadlocks
+select id, current_stock
+from raw_materials
+where branch_id = $branch and id = any($materialIds)
+order by id
+for update;
+
+-- Validate + update per material (or batch update)
+update raw_materials
+set current_stock = current_stock - $needed
+where id = $materialId;
+
+insert into inventory_log(id, branch_id, order_id, raw_material_id, delta, reason)
+values(gen_random_uuid(), $branch, $order, $materialId, -$needed, 'SALE');
+
+commit;
+      `.trim()),
+      edges: `
+        <ul>
+          <li>Concurrent high-volume orders: expect serialization conflicts; auto-retry with jitter.</li>
+          <li>Refund policy: if restocking, log +delta with reason REFUND; otherwise log WASTAGE/NO_RESTOCK with rationale.</li>
+          <li>Recipe missing or malformed: block sale (default) or manager override (audited).</li>
+        </ul>
+      `,
+      scaling: `
+        <ul>
+          <li>Partition inventory_log monthly and archive old partitions.</li>
+          <li>Async inventory reconciliation reports (variance checks, low stock alerts).</li>
+          <li>Introduce “reservations” only if you require long-lived carts; otherwise keep simple.</li>
+        </ul>
+      `
+    }));
+
+    // 6. Financial
+    html.push(sectionTemplate('financials','6. Financial Engine', {
+      overview: `
+        <p class="kicker">Financial reporting focuses on P&L: revenue, COGS (recipe-based), expenses, and channel commissions.</p>
+        <ul>
+          <li><strong>Revenue:</strong> from invoices.</li>
+          <li><strong>COGS:</strong> from inventory consumption × cost basis.</li>
+          <li><strong>Expenses:</strong> fixed vs variable.</li>
+          <li><strong>Commissions:</strong> platform/channel fees.</li>
+        </ul>
+      `,
+      decisions: `
+        <ul>
+          <li>COGS computed using moving-average cost (simple) unless FIFO is required.</li>
+          <li>Wastage tracked as inventory_log reason=WASTAGE and included in cost analysis.</li>
+          <li>Complimentary orders count toward COGS but not revenue.</li>
+        </ul>
+      `,
+      flow: `
+        <p class="kicker">Invoices → inventory consumption → COGS → subtract expenses and commissions → net profit.</p>
+      `,
+      logic: codeBlock('pseudocode', `
+Revenue = sum(invoices.grand_total)
+COGS = sum(consumed_qty(material) * avg_cost(material))
+GrossProfit = Revenue - COGS
+NetProfit = GrossProfit - Expenses - PlatformCommission
+      `.trim()),
+      edges: `
+        <ul>
+          <li>Cost basis changes over time: store cost snapshots per purchase batch or maintain moving average table.</li>
+          <li>Inventory shrinkage: record as ADJUSTMENT/WASTAGE and surface in variance reporting.</li>
+        </ul>
+      `,
+      scaling: `
+        <ul>
+          <li>Daily aggregates tables (per branch, channel) to accelerate dashboards and exports.</li>
+          <li>Offload analytics to read replicas or warehouse for heavy queries.</li>
+        </ul>
+      `
+    }));
+
+    // 7. API
+    html.push(sectionTemplate('api','7. API Design', {
+      overview: `
+        <p class="kicker">APIs are designed for safe retries (idempotency), stable contracts, and secure webhooks.</p>
+        <ul>
+          <li>Versioned endpoints (<code>/v1</code>) and clear response formats.</li>
+          <li>Mutations require Idempotency-Key.</li>
+          <li>Webhook verification via HMAC signatures.</li>
+        </ul>
+      `,
+      decisions: `
+        <ul>
+          <li>Idempotency storage: Redis (fast) or DB table (durable); use 24h TTL default.</li>
+          <li>Webhook handlers: ACK immediately; queue for async processing.</li>
+          <li>Return consistent error codes for UX and reporting.</li>
+        </ul>
+      `,
+      flow: codeBlock('HTTP', `
+POST /v1/orders
+Idempotency-Key: <uuid>
+Body: { channel, items: [{productId, qty}], notes? }
+
+POST /v1/orders/{orderId}/pay
+Idempotency-Key: <uuid>
+Body: { payments: [{method, amount}], complimentary?: {reason} }
+
+POST /v1/webhooks/swiggy
+X-Signature: <hmac>
+Body: { eventId, type, payload }
+      `.trim()),
+      logic: codeBlock('pseudocode', `
+onMutation(request):
+  require Idempotency-Key
+  key = (branchId, actorId, endpoint, idempotencyKey)
+  if stored(key):
+    if requestHash != stored.requestHash: throw IDEMPOTENCY_KEY_REUSE_MISMATCH
+    return stored.response
+  response = handle()
+  store(key, requestHash, response, ttl=24h)
+  return response
+
+onWebhook(payload):
+  verifyHmac()
+  if seen(eventId): return 200
+  persistWebhookReceipt()
+  enqueueProcessingJob(eventId)
+  return 200
+      `.trim()),
+      edges: `
+        <ul>
+          <li>Key reuse with different payload: return 409 and log client bug.</li>
+          <li>Webhook replay: dedupe by eventId; treat duplicates as success.</li>
+          <li>Client offline submissions: replay safely due to idempotency keys.</li>
+        </ul>
+      `,
+      scaling: `
+        <ul>
+          <li>Separate webhook ingestion worker pool to protect core POS latency.</li>
+          <li>Introduce outbox pattern for stronger event publish guarantees.</li>
+        </ul>
+      `
+    }));
+
+    // 8. Events
+    html.push(sectionTemplate('events','8. Events', {
+      overview: `
+        <p class="kicker">Events decouple domains: kitchen display, reporting, notifications, integrations.</p>
+        <ul>
+          <li>Redis Pub/Sub at small scale.</li>
+          <li>Kafka when you need retention, replay, and many consumer groups.</li>
+        </ul>
+      `,
+      decisions: `
+        <ul>
+          <li>Publish after commit (no event for rolled-back transactions).</li>
+          <li>At-least-once delivery: consumers must be idempotent.</li>
+          <li>Define schemas + version; avoid breaking changes.</li>
+        </ul>
+      `,
+      flow: `
+        ${mermaidBlock(`
+flowchart LR
+  API -->|publish| Pub[Redis Pub/Sub]
+  Pub --> KDS[Kitchen Display Consumer]
+  Pub --> Reports[Reporting Consumer]
+  Pub --> Notify[Notification Consumer]
+  Pub --> Sync[Platform Sync Consumer]
+        `.trim())}
+      `,
+      logic: codeBlock('json', `
+{
+  "eventName": "OrderPaid",
+  "eventId": "evt_01H...",
+  "occurredAt": "2026-03-24T12:34:56Z",
+  "branchId": "uuid",
+  "orderId": "uuid",
+  "channel": "dinein",
+  "version": 1
+}
+      `.trim()),
+      edges: `
+        <ul>
+          <li>Consumer failure: retry; after N attempts, DLQ + alert.</li>
+          <li>Ordering: best-effort on Redis; Kafka partitions later if strict ordering required.</li>
+        </ul>
+      `,
+      scaling: `
+        <ul>
+          <li>Kafka when &gt;10 branches or events need durable retention/replay.</li>
+          <li>Outbox table if publish guarantees become critical.</li>
+        </ul>
+      `
+    }));
+
+    // 9. Concurrency
+    html.push(sectionTemplate('concurrency','9. Concurrency', {
+      overview: `
+        <p class="kicker">Concurrency strategy combines DB locks, isolation levels, and idempotency.</p>
+        <ul>
+          <li>Row locks for inventory rows.</li>
+          <li>Serializable isolation only where needed (avoid globally if unnecessary).</li>
+          <li>Advisory locks for cross-table invariants.</li>
+        </ul>
+      `,
+      decisions: `
+        <ul>
+          <li>Stable lock ordering to reduce deadlocks.</li>
+          <li>Retry transient DB errors with jitter.</li>
+          <li>Keep critical transactions short.</li>
+        </ul>
+      `,
+      flow: `<p class="kicker">Lock order: order row → raw_materials sorted by id → payments/invoice writes.</p>`,
+      logic: codeBlock('pseudocode', `
+function runTxnWithRetry(fn):
+  for attempt in 1..3:
+    try: return fn()
+    catch SerializationFailure or Deadlock:
+      sleep(jitter(attempt))
+  throw DB_RETRY_EXHAUSTED
+      `.trim()),
+      edges: `
+        <ul>
+          <li>Deadlocks: auto-retry 2–3 times, then surface friendly error to user.</li>
+          <li>Long-running transactions: move heavy work (exports, webhooks) outside the transaction.</li>
+        </ul>
+      `,
+      scaling: `
+        <ul>
+          <li>Tune DB pool and keep transaction latency low.</li>
+          <li>Split hot append-only tables into partitions.</li>
+        </ul>
+      `
+    }));
+
+    // 10. Offline
+    html.push(sectionTemplate('offline','10. Offline Mode', {
+      overview: `
+        <p class="kicker">Offline mode queues intent locally and replays with idempotency keys; inventory always uses server truth.</p>
+        <ul>
+          <li>IndexedDB queue stores mutation requests.</li>
+          <li>Replay sequentially on reconnect.</li>
+          <li>Conflicts resolve in favor of server truth, especially inventory and pricing.</li>
+        </ul>
+      `,
+      decisions: `
+        <ul>
+          <li>Every queued mutation includes Idempotency-Key.</li>
+          <li>Non-retryable errors stop replay and require manager attention.</li>
+          <li>UI must show “pending sync” state clearly.</li>
+        </ul>
+      `,
+      flow: codeBlock('pseudocode', `
+queueItem = { id, endpoint, body, idempotencyKey, createdAt }
+
+onReconnect():
+  for item in queue ordered by createdAt:
+    res = send(item)
+    if res.ok: delete item
+    else if retryable(res): backoff and retry later
+    else: mark failed and show to manager
+      `.trim()),
+      logic: `<p class="kicker">Server recomputes totals at submit time; client totals are advisory only when offline.</p>`,
+      edges: `
+        <ul>
+          <li>Price updates while offline: server response updates totals; UI must confirm with user.</li>
+          <li>Inventory insufficient at replay: UI shows failure + suggests alternative items/manager override policy.</li>
+        </ul>
+      `,
+      scaling: `
+        <ul>
+          <li>Catalog snapshot with versioning to improve offline usability.</li>
+          <li>Sync compression (batch replay) when many queued items exist.</li>
+        </ul>
+      `
+    }));
+
+    // 11. Caching
+    html.push(sectionTemplate('caching','11. Caching Strategy', {
+      overview: `
+        <p class="kicker">Cache reads for speed; never rely on cache for correctness-critical decisions.</p>
+        <ul>
+          <li>Cache: catalog, tax configuration, permission lookups.</li>
+          <li>Do not cache inventory for deductions; only for display (stale-safe).</li>
+        </ul>
+      `,
+      decisions: `
+        <ul>
+          <li>Use short TTLs and versioned keys for config/cat changes.</li>
+          <li>Cache bust on updates via events or version increments.</li>
+        </ul>
+      `,
+      flow: `<p class="kicker">Read-through cache for config; write-through not needed for correctness-critical data.</p>`,
+      logic: codeBlock('text', `
+Redis keys (examples):
+  branch:{id}:catalog:v{ver}   TTL=1h
+  branch:{id}:tax             TTL=10m
+  branch:{id}:permissions     TTL=10m
+      `.trim()),
+      edges: `
+        <ul>
+          <li>Cache stampede: single-flight / stale-while-revalidate.</li>
+          <li>Consistency: show “Last updated at” for cached inventory display.</li>
+        </ul>
+      `,
+      scaling: `
+        <ul>
+          <li>CDN for static docs/assets.</li>
+          <li>Edge caching for read-only endpoints if needed.</li>
+        </ul>
+      `
+    }));
+
+    // 12. Complexity
+    html.push(sectionTemplate('complexity','12. Time Complexity Targets', {
+      overview: `
+        <p class="kicker">Keep hot paths predictable at lunch/dinner spikes. Most operations should be O(n) in items touched.</p>
+        <ul>
+          <li>Order create/pay: O(items).</li>
+          <li>Inventory deduction: O(materials touched), often less than items.</li>
+          <li>Exports: async; heavy queries allowed off the critical path.</li>
+        </ul>
+      `,
+      decisions: `
+        <ul>
+          <li>Define p95 latency targets for key endpoints.</li>
+          <li>Prevent N+1 queries by bulk loading recipes/materials.</li>
+        </ul>
+      `,
+      flow: codeBlock('text', `
+Suggested SLOs:
+  POST /orders        p95 < 250ms (in-store)
+  POST /orders/{id}/pay p95 < 350ms
+  Webhook ACK         < 150ms (async processing)
+      `.trim()),
+      logic: `<p class="kicker">Prefer single queries for recipe expansion and precomputed product pricing snapshots where possible.</p>`,
+      edges: `
+        <ul>
+          <li>Large carts: cap items per order or batch compute recipes.</li>
+          <li>Slow DB: degrade gracefully by disabling non-critical UI actions.</li>
+        </ul>
+      `,
+      scaling: `
+        <ul>
+          <li>Daily aggregates for reporting/export speed.</li>
+          <li>Separate reporting DB/warehouse at high scale.</li>
+        </ul>
+      `
+    }));
+
+    // 13. Permissions
+    html.push(sectionTemplate('permissions','13. Permission Matrix', {
+      overview: `
+        <p class="kicker">RBAC with manager overrides; backend enforces permissions and logs sensitive actions.</p>
+        <ul>
+          <li>Roles: Cashier, Kitchen, Manager, Admin.</li>
+          <li>Manager override requires reason + audit log.</li>
+        </ul>
+      `,
+      decisions: `
+        <ul>
+          <li>Backend is the policy enforcement point.</li>
+          <li>Quick lock on shared devices; PIN for manager actions.</li>
+        </ul>
+      `,
+      flow: `<p class="kicker">Authenticate → authorize action → execute → audit.</p>`,
+      logic: codeBlock('pseudocode', `
+if actor.role == ADMIN: allow
+if action in MANAGER_ONLY: require MANAGER
+else consult role matrix
+
+if denied: throw FORBIDDEN
+audit sensitive allow/deny
+      `.trim()),
+      edges: `
+        <ul>
+          <li>Offline actions still require permission check on replay.</li>
+          <li>Role changes mid-shift: refresh token/permissions periodically.</li>
+        </ul>
+      `,
+      scaling: `
+        <ul>
+          <li>Policy engine (OPA) only if RBAC becomes unmanageable; otherwise keep simple.</li>
+        </ul>
+      `
+    }));
+
+    // 14 UI Flows
+    html.push(sectionTemplate('ui-flows','14. UI Flows', {
+      overview: `
+        <p class="kicker">POS UI optimized for speed: minimal taps, clear status, always-visible cart totals.</p>
+        <ul>
+          <li>Fast product search + categories.</li>
+          <li>Cart visible with live totals.</li>
+          <li>Separate KDS view for kitchen operations.</li>
+        </ul>
+      `,
+      decisions: `
+        <ul>
+          <li>Disable submit buttons during network requests.</li>
+          <li>Use idempotency keys for all mutations to support retry safely.</li>
+          <li>Show sync/pending state for offline mode.</li>
+        </ul>
+      `,
+      flow: codeBlock('text', `
+Core screens:
+  1) Login / shift start
+  2) New order (catalog + cart)
+  3) Payment (split payment, UPI QR)
+  4) Order timeline (FSM actions)
+  5) Refund / void (manager only)
+  6) Inventory view (read-only for most roles)
+  7) Reports & exports (async)
+      `.trim()),
+      logic: `<p class="kicker">UX principle: prevent duplicates at the source (disable UI) and at the server (idempotency).</p>`,
+      edges: `
+        <ul>
+          <li>Network flicker: offline queue; show “pending sync” clearly.</li>
+          <li>Printer failures: receipt can be reprinted from stored invoice.</li>
+        </ul>
+      `,
+      scaling: `
+        <ul>
+          <li>Dedicated KDS devices and separate staff UIs as store count grows.</li>
+          <li>Keyboard shortcuts on desktop for faster workflows.</li>
+        </ul>
+      `
+    }));
+
+    // 15 Integrations
+    html.push(sectionTemplate('integrations','15. Swiggy/Zomato Integration Pipeline', {
+      overview: `
+        <p class="kicker">Webhook-first ingestion with verification, dedupe, persistence, and async processing.</p>
+        <ul>
+          <li>Verify signature (HMAC) per platform.</li>
+          <li>Persist raw webhook receipt before enqueueing processing.</li>
+          <li>Dedupe by eventId.</li>
+        </ul>
+      `,
+      decisions: `
+        <ul>
+          <li>ACK platform immediately; enqueue heavy work.</li>
+          <li>Consumer idempotency: safe on webhook retries.</li>
+        </ul>
+      `,
+      flow: `
+        ${mermaidBlock(`
+sequenceDiagram
+  participant Platform
+  participant API
+  participant DB
+  participant Q as BullMQ
+  participant W as Worker
+
+  Platform->>API: POST /webhooks (eventId, payload, signature)
+  API->>API: verify signature + dedupe(eventId)
+  API->>DB: insert webhook_receipt(rawPayload)
+  API->>Q: enqueue processWebhook(eventId)
+  API-->>Platform: 200 OK (fast)
+  W->>DB: load receipt
+  W->>DB: apply order/billing/inventory transitions
+  W->>DB: audit + publish events
+        `.trim())}
+      `,
+      logic: codeBlock('pseudocode', `
+if !verifyHmac(payload, signature): throw WEBHOOK_SIGNATURE_INVALID
+if dedupeStore.has(eventId): return 200
+db.insert(webhook_receipt)
+queue.enqueue(processWebhook(eventId))
+return 200
+      `.trim()),
+      edges: `
+        <ul>
+          <li>Out-of-order events: store and reconcile using platform precedence rules.</li>
+          <li>Duplicate deliveries: dedupe by eventId; treat as success.</li>
+          <li>Platform cancellation after prep started: follow manager-only cancellation/refund policy.</li>
+        </ul>
+      `,
+      scaling: `
+        <ul>
+          <li>Separate ingestion from processing workers to protect POS latency.</li>
+          <li>Kafka when you need durable replay and many consumers.</li>
+        </ul>
+      `
+    }));
+
+    // 16 Failure Modes
+    html.push(sectionTemplate('failure-modes','16. Failure Modes', {
+      overview: `
+        <p class="kicker">Assume networks fail and requests are retried. Make all operations safe, explainable, and recoverable.</p>
+        <ul>
+          <li>Retry transient DB conflicts and external timeouts.</li>
+          <li>Never hide partial failures; always audit.</li>
+          <li>Use DLQ for repeated consumer failures.</li>
+        </ul>
+      `,
+      decisions: `
+        <ul>
+          <li>DB serialization failures: retry 3x with jitter.</li>
+          <li>External 5xx/timeouts: exponential backoff.</li>
+          <li>External 4xx validation errors: do not retry; alert.</li>
+        </ul>
+      `,
+      flow: codeBlock('text', `
+Retry policy:
+  - DB serialization/deadlock: 3 retries, jitter
+  - External timeout/5xx: exponential backoff (cap 10 minutes)
+  - External 4xx: no retry (manual action)
+      `.trim()),
+      logic: codeBlock('pseudocode', `
+try:
+  runTxn()
+catch InsufficientStock:
+  return INSUFFICIENT_STOCK + details
+catch SerializationFailure:
+  retryWithJitter()
+after commit:
+  publish events (or outbox)
+      `.trim()),
+      edges: `
+        <ul>
+          <li>Payment captured but DB commit failed: reconcile by provider reference + idempotency.</li>
+          <li>Event publish failed after commit: outbox retry job publishes later.</li>
+        </ul>
+      `,
+      scaling: `
+        <ul>
+          <li>Outbox + DLQ + monitoring dashboards as the system grows.</li>
+          <li>Runbook-driven operations (top error codes, queue lag, webhook backlog).</li>
+        </ul>
+      `
+    }));
+
+    // 17 Scaling
+    html.push(sectionTemplate('scaling','17. 3-Phase Scaling Plan', {
+      overview: `
+        <p class="kicker">Scale in phases to avoid premature complexity.</p>
+        <ul>
+          <li><strong>Phase 1:</strong> monolith + Redis + BullMQ (single store).</li>
+          <li><strong>Phase 2:</strong> multi-branch, worker pool, read replicas, aggregates.</li>
+          <li><strong>Phase 3:</strong> Kafka, service extraction, warehouse, domain ownership.</li>
+        </ul>
+      `,
+      decisions: `
+        <ul>
+          <li>Use measurable triggers (orders/day, queue lag, p95 latency, branch count).</li>
+          <li>Extract services only when ownership/scale justifies it (webhooks, reporting exports, catalog sync).</li>
+        </ul>
+      `,
+      flow: codeBlock('text', `
+Example triggers:
+  Phase 1 -> 2: >3 branches OR >1k orders/day OR frequent reporting slowdowns
+  Phase 2 -> 3: >10 branches OR >10k orders/day OR many consumer groups + retention needs
+      `.trim()),
+      logic: `<p class="kicker">Measure: endpoint p95, DB CPU/IO, lock contention, queue lag, top error codes.</p>`,
+      edges: `
+        <ul>
+          <li>Branch timezones: store timestamptz, render by branch timezone to avoid “day boundary” bugs.</li>
+        </ul>
+      `,
+      scaling: `
+        <ul>
+          <li>Warehouse for analytics + BI when needed.</li>
+          <li>Kafka for durable events and multi-consumer scaling.</li>
+          <li>Multi-tenant vs per-branch DB: decide based on compliance/performance.</li>
+        </ul>
+      `
+    }));
+
+    // 18 Excel
+    html.push(sectionTemplate('excel','18. Excel Column Dictionary', {
+      overview: `
+        <p class="kicker">Excel/CSV exports are defined like API schemas: explicit columns, types, and rules. Generated asynchronously.</p>
+        <ul>
+          <li>Exports are jobs (worker), not synchronous.</li>
+          <li>Schema definitions are stable and versioned.</li>
+          <li>Timezone-aware grouping by branch business day.</li>
+        </ul>
+      `,
+      decisions: `
+        <ul>
+          <li>Large ranges are chunked or limited; streaming for huge exports.</li>
+          <li>Exports written to object storage; link returned to UI.</li>
+        </ul>
+      `,
+      flow: codeBlock('text', `
+Export flow:
+  UI -> request export -> API enqueues job -> worker queries DB
+  -> generates CSV/XLSX -> stores file -> UI downloads
+      `.trim()),
+      logic: `
+        <table>
+          <thead><tr><th>Report</th><th>Column</th><th>Type</th><th>Calculation / notes</th></tr></thead>
+          <tbody>
+            <tr><td>Daily Sales</td><td>business_date</td><td>date</td><td>Branch timezone date.</td></tr>
+            <tr><td>Daily Sales</td><td>order_count</td><td>int</td><td>Count of completed orders.</td></tr>
+            <tr><td>Daily Sales</td><td>gross_sales_inr</td><td>decimal(12,2)</td><td>Sum invoices.grand_total_inr.</td></tr>
+            <tr><td>Daily Sales</td><td>gst_inr</td><td>decimal(12,2)</td><td>Sum invoices.gst_inr.</td></tr>
+            <tr><td>Payments</td><td>method</td><td>string</td><td>cash/card/upi/wallet.</td></tr>
+            <tr><td>Payments</td><td>amount_inr</td><td>decimal(12,2)</td><td>Sum payments by method.</td></tr>
+            <tr><td>Inventory</td><td>raw_material_name</td><td>string</td><td>raw_materials.name</td></tr>
+            <tr><td>Inventory</td><td>consumed_qty</td><td>decimal(14,3)</td><td>Sum -delta where reason=SALE.</td></tr>
+            <tr><td>Platform Reco</td><td>platform_fee_inr</td><td>decimal(12,2)</td><td>Commission/fee rule per channel.</td></tr>
+          </tbody>
+        </table>
+      `,
+      edges: `
+        <ul>
+          <li>Timezone boundaries: always compute by branch timezone.</li>
+          <li>Large exports: stream or pre-aggregate by day.</li>
+        </ul>
+      `,
+      scaling: `
+        <ul>
+          <li>Daily aggregates tables for fast exports at scale.</li>
+          <li>Warehouse-based export generation when data size grows beyond OLTP comfort.</li>
+        </ul>
+      `
+    }));
+
+    // Appendix
+    html.push(sectionTemplate('appendix','Appendix', {
+      overview: `
+        <p class="kicker">Reference tables and operational contracts used by the system.</p>
+        <div class="kicker tocLinks">
+          Jump within Appendix:
+          <a href="#appendix-permissions">Permission matrix</a> ·
+          <a href="#appendix-idempotency">Idempotency rules</a> ·
+          <a href="#appendix-events">Event catalog</a> ·
+          <a href="#appendix-errors">Error codes</a> ·
+          <a href="#appendix-excel">Excel dictionary</a>
+        </div>
+      `,
+      decisions: `
+        <ul>
+          <li>These definitions should be versioned and treated as contracts.</li>
+          <li>Sensitive actions must be audited (manager overrides, refunds, cancellations after prep).</li>
+        </ul>
+      `,
+      flow: `
+        <p class="kicker">Appendix is static reference; use search to jump quickly.</p>
+        <div class="callout">
+          <strong>Recommendation:</strong> once implementation exists, generate Appendix tables from code/config to prevent drift.
+        </div>
+      `,
+      logic: `
+        <div class="subcard" id="appendix-permissions">
+          <h4>Permission matrix</h4>
+          <table>
+            <thead><tr><th>Action</th><th>Cashier</th><th>Kitchen</th><th>Manager</th><th>Admin</th></tr></thead>
+            <tbody>
+              <tr><td>Create / edit DRAFT order</td><td>✅</td><td>—</td><td>✅</td><td>✅</td></tr>
+              <tr><td>Accept order / start prep / mark ready</td><td>—</td><td>✅</td><td>✅</td><td>✅</td></tr>
+              <tr><td>Cancel order (PLACED)</td><td>✅</td><td>—</td><td>✅</td><td>✅</td></tr>
+              <tr><td>Cancel after IN_PREP</td><td>—</td><td>—</td><td>✅ (reason)</td><td>✅</td></tr>
+              <tr><td>Complimentary order</td><td>—</td><td>—</td><td>✅ (reason)</td><td>✅</td></tr>
+              <tr><td>Refund (partial/full)</td><td>—</td><td>—</td><td>✅ (reason)</td><td>✅</td></tr>
+              <tr><td>Inventory adjustment</td><td>—</td><td>—</td><td>✅</td><td>✅</td></tr>
+              <tr><td>Edit recipes / pricing</td><td>—</td><td>—</td><td>✅</td><td>✅</td></tr>
+              <tr><td>Manage users / roles</td><td>—</td><td>—</td><td>—</td><td>✅</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="subcard" id="appendix-idempotency">
+          <h4>API idempotency rules</h4>
+          <ul>
+            <li><strong>Required for:</strong> create order, pay, refund, state transitions, inventory adjust.</li>
+            <li><strong>Storage:</strong> Redis (fast) or DB table (durable), keyed by (branchId, actorId, endpoint, key).</li>
+            <li><strong>Replay behavior:</strong> if request hash matches, return stored response.</li>
+            <li><strong>Mismatch behavior:</strong> 409 <code>IDEMPOTENCY_KEY_REUSE_MISMATCH</code>.</li>
+            <li><strong>TTL:</strong> 24h typical (extend for offline-heavy operations).</li>
+          </ul>
+          ${codeBlock('SQL', `
+create table idempotency_keys (
+  id uuid primary key,
+  branch_id uuid not null,
+  actor_id uuid not null,
+  endpoint text not null,
+  key text not null,
+  request_hash text not null,
+  response_json jsonb not null,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null,
+  unique(branch_id, actor_id, endpoint, key)
+);
+          `.trim())}
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="subcard" id="appendix-events">
+          <h4>Event catalog (with payloads)</h4>
+          <p class="kicker">All events include: <code>eventId</code>, <code>eventName</code>, <code>occurredAt</code>, <code>version</code>, <code>branchId</code>.</p>
+          <table>
+            <thead><tr><th>Event</th><th>Producer</th><th>Consumers</th><th>Payload (example)</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>OrderPlaced</td>
+                <td>API</td>
+                <td>KDS, Reporting</td>
+                <td>
+                  <pre><code>{
+  "eventName":"OrderPlaced",
+  "eventId":"evt_...",
+  "occurredAt":"2026-03-24T12:00:00Z",
+  "version":1,
+  "branchId":"uuid",
+  "orderId":"uuid",
+  "channel":"dinein",
+  "items":[{"productId":"uuid","qty":2}]
+}</code></pre>
+                </td>
+              </tr>
+              <tr>
+                <td>OrderPaid</td>
+                <td>API</td>
+                <td>Reporting, Notifications</td>
+                <td>
+                  <pre><code>{
+  "eventName":"OrderPaid",
+  "eventId":"evt_...",
+  "occurredAt":"2026-03-24T12:05:00Z",
+  "version":1,
+  "branchId":"uuid",
+  "orderId":"uuid",
+  "invoiceId":"uuid",
+  "totalInr":420.00,
+  "payments":[{"method":"upi","amount":300},{"method":"cash","amount":120}]
+}</code></pre>
+                </td>
+              </tr>
+              <tr>
+                <td>InventoryDeducted</td>
+                <td>API</td>
+                <td>Reporting</td>
+                <td>
+                  <pre><code>{
+  "eventName":"InventoryDeducted",
+  "eventId":"evt_...",
+  "occurredAt":"2026-03-24T12:05:00Z",
+  "version":1,
+  "branchId":"uuid",
+  "orderId":"uuid",
+  "deltas":[{"rawMaterialId":"uuid","delta":-120.0,"uom":"g"}]
+}</code></pre>
+                </td>
+              </tr>
+              <tr>
+                <td>RefundIssued</td>
+                <td>API</td>
+                <td>Reporting, Notifications</td>
+                <td>
+                  <pre><code>{
+  "eventName":"RefundIssued",
+  "eventId":"evt_...",
+  "occurredAt":"2026-03-24T13:00:00Z",
+  "version":1,
+  "branchId":"uuid",
+  "orderId":"uuid",
+  "refundId":"uuid",
+  "amountInr":120.00,
+  "reason":"Customer cancellation",
+  "approvedBy":"managerUserId"
+}</code></pre>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="subcard" id="appendix-errors">
+          <h4>Error codes & failure handling</h4>
+          <table>
+            <thead><tr><th>Code</th><th>When</th><th>Handling</th></tr></thead>
+            <tbody>
+              <tr><td>INVALID_TRANSITION</td><td>FSM invalid move</td><td>Refresh order; show allowed actions.</td></tr>
+              <tr><td>FORBIDDEN</td><td>Insufficient role</td><td>Require manager PIN/approval.</td></tr>
+              <tr><td>INSUFFICIENT_STOCK</td><td>Would go negative</td><td>Block sale; show materials; manager override policy if allowed.</td></tr>
+              <tr><td>IDEMPOTENCY_KEY_REQUIRED</td><td>Missing Idempotency-Key</td><td>Client generates key and retries.</td></tr>
+              <tr><td>IDEMPOTENCY_KEY_REUSE_MISMATCH</td><td>Key reused with different payload</td><td>Return 409; client must use a new key; investigate.</td></tr>
+              <tr><td>WEBHOOK_SIGNATURE_INVALID</td><td>Bad HMAC signature</td><td>Reject; verify secrets; do not auto-retry.</td></tr>
+              <tr><td>PLATFORM_EVENT_DUPLICATE</td><td>eventId already processed</td><td>Return 200; no-op.</td></tr>
+              <tr><td>DB_SERIALIZATION_FAILURE</td><td>Tx conflict</td><td>Server retries with jitter.</td></tr>
+              <tr><td>DB_RETRY_EXHAUSTED</td><td>Too many transient failures</td><td>Return 503; user retries; alert if frequent.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="subcard" id="appendix-excel">
+          <h4>Excel column dictionary (extended)</h4>
+          <table>
+            <thead><tr><th>Report</th><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td>Daily Sales</td><td>business_date</td><td>date</td><td>Branch timezone date boundary.</td></tr>
+              <tr><td>Daily Sales</td><td>gross_sales_inr</td><td>decimal(12,2)</td><td>Sum invoice totals.</td></tr>
+              <tr><td>Daily Sales</td><td>gst_inr</td><td>decimal(12,2)</td><td>Sum GST component.</td></tr>
+              <tr><td>Daily Sales</td><td>discount_inr</td><td>decimal(12,2)</td><td>Sum discounts.</td></tr>
+              <tr><td>Payments</td><td>method</td><td>string</td><td>cash/card/upi/wallet.</td></tr>
+              <tr><td>Payments</td><td>amount_inr</td><td>decimal(12,2)</td><td>Sum by method.</td></tr>
+              <tr><td>Orders</td><td>channel</td><td>string</td><td>dinein/takeaway/swiggy/zomato.</td></tr>
+              <tr><td>Inventory</td><td>raw_material_name</td><td>string</td><td>raw_materials.name</td></tr>
+              <tr><td>Inventory</td><td>consumed_qty</td><td>decimal(14,3)</td><td>Sum -delta where reason=SALE.</td></tr>
+              <tr><td>Platform Reco</td><td>platform_fee_inr</td><td>decimal(12,2)</td><td>Commission/fee per order.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      `,
+      edges: `
+        <ul>
+          <li>Appendix drift: keep it versioned or generate from code/config.</li>
+        </ul>
+      `,
+      scaling: `
+        <ul>
+          <li>Automate schema docs and event catalog generation as the codebase grows.</li>
+        </ul>
+      `,
+      extras: `
+        <div class="subcard">
+          <h4>Diagrams summary (required)</h4>
+          <p class="kicker">The required Mermaid diagrams are embedded in:</p>
+          <ul>
+            <li><strong>Architecture:</strong> flowchart (system blocks)</li>
+            <li><strong>Order State Machine:</strong> state diagram</li>
+            <li><strong>Events:</strong> event flow chart</li>
+            <li><strong>Inventory:</strong> deduction sequence diagram</li>
+          </ul>
+        </div>
+      `
+    }));
+
+    document.getElementById('sections').innerHTML = html.join('');
+
+    activateFromHash(location.hash || '#architecture', true);
+    renderMermaidIn(document);
+  }
+
+  function activateFromHash(hash, replace){
+    const id = (hash || '').replace(/^#/, '') || 'architecture';
+    const exists = SECTIONS.some(s => s.id === id);
+    const target = exists ? id : 'architecture';
+
+    const update = () => {
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      const active = document.getElementById(target);
+      if (active){
+        active.classList.add('active');
+        active.focus({preventScroll:true});
+      }
+
+      document.querySelectorAll('.tab').forEach(a => a.removeAttribute('aria-current'));
+      const tab = document.querySelector(`.tab[data-tab="${CSS.escape(target)}"]`);
+      if (tab){
+        tab.setAttribute('aria-current','page');
+        tab.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
+      }
+
+      if (replace) history.replaceState(null,'','#'+target);
+    };
+
+    if (typeof document.startViewTransition === 'function'){
+      document.startViewTransition(() => update());
+    }else{
+      update();
+    }
+  }
+
+  function setupNav(){
+    document.getElementById('tabs').addEventListener('click', (e) => {
+      const a = e.target.closest('a.tab');
+      if (!a) return;
+      e.preventDefault();
+      const id = a.getAttribute('data-tab');
+      activateFromHash('#'+id, false);
+    });
+    window.addEventListener('hashchange', () => activateFromHash(location.hash, false));
+  }
+
+  function setupCopy(){
+    document.addEventListener('click', async (e) => {
+      const btn = e.target.closest('button.copy');
+      if (!btn) return;
+      const id = btn.getAttribute('data-copy');
+      const pre = document.getElementById(id);
+      if (!pre) return;
+
+      const prev = btn.textContent;
+      try{
+        await navigator.clipboard.writeText(pre.innerText);
+        btn.textContent = 'Copied';
+      }catch{
+        btn.textContent = 'Copy failed';
+      }
+      setTimeout(() => btn.textContent = prev, 900);
+    });
+  }
+
+  function setupSearch(){
+    const input = document.getElementById('q');
+    const jump = document.getElementById('jump');
+
+    function close(){
+      jump.classList.remove('open');
+      jump.innerHTML = '';
+    }
+
+    function score(item, q){
+      const label = item.label.toLowerCase();
+      const kw = (KEYWORDS[item.id] || []).join(' ').toLowerCase();
+      let s = 0;
+      if (label.includes(q)) s += 10;
+      if (kw.includes(q)) s += 4;
+      const tokens = q.split(/\s+/).filter(Boolean);
+      for (const t of tokens){
+        if (label.includes(t)) s += 4;
+        if (kw.includes(t)) s += 1;
+      }
+      return s;
+    }
+
+    function search(q){
+      const t = q.trim().toLowerCase();
+      if (!t){ close(); return; }
+
+      const hits = SECTIONS
+        .map(x => ({
+          ...x,
+          hint: (KEYWORDS[x.id] || []).slice(0,3).join(' · '),
+          s: score(x, t)
+        }))
+        .filter(x => x.s > 0)
+        .sort((a,b)=>b.s-a.s)
+        .slice(0, 8);
+
+      if (!hits.length){ close(); return; }
+
+      jump.classList.add('open');
+      jump.innerHTML = hits.map(h => `
+        <div class="jumpItem" data-jump="${esc(h.id)}" role="button" tabindex="0">
+          <div><strong>${esc(h.label)}</strong><div class="kicker" style="margin:0">${esc(h.hint || '')}</div></div>
+          <span class="badge">#${esc(h.id)}</span>
+        </div>
+      `).join('');
+    }
+
+    input.addEventListener('input', () => search(input.value));
+
+    jump.addEventListener('click', (e) => {
+      const item = e.target.closest('.jumpItem');
+      if (!item) return;
+      const id = item.getAttribute('data-jump');
+      activateFromHash('#'+id, false);
+      close();
+      input.blur();
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!jump.contains(e.target) && e.target !== input) close();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k'){
+        e.preventDefault();
+        input.focus();
+      }
+      if (e.key === 'Escape') close();
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape'){ close(); input.blur(); }
+      if (e.key === 'Enter'){
+        const first = jump.querySelector('.jumpItem');
+        if (first){
+          activateFromHash('#'+first.getAttribute('data-jump'), false);
+          close();
+        }
+      }
+    });
+  }
+
+  render();
+  setupNav();
+  setupCopy();
+  setupSearch();
+</script>
 </body>
 </html>
