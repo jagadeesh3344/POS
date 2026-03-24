@@ -3,54 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POS Design Documentation</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.2.0/mermaid.min.css" />
+    <title>Documentation</title>
+    <style>
+        body {font-family: Arial, sans-serif; margin: 0; padding: 0;}
+        nav {position: sticky; top: 0; background: #fff; border-bottom: 1px solid #ccc; display: flex; flex-wrap: wrap; overflow: auto;}
+        nav a {flex: 1; padding: 15px; text-align: center; text-decoration: none; color: #000;}
+        nav a:hover {background: #f0f0f0;}
+        section {padding: 20px;}
+        code {background-color: #f4f4f4; padding: 5px; border-radius: 3px;}
+        @media (max-width: 600px) {
+            nav a {font-size: 14px; padding: 10px;}
+        }
+    </style>
 </head>
 <body>
-    <h1>POS Design Documentation</h1>
-    <div class="tabs">
-        <ul>
-            <li><a href="#tab1">1</a></li>
-            <li><a href="#tab2">2</a></li>
-            <li><a href="#tab3">3</a></li>
-            <li><a href="#tab4">4</a></li>
-            <li><a href="#tab5">5</a></li>
-            <li><a href="#tab6">6</a></li>
-            <li><a href="#tab7">7</a></li>
-            <li><a href="#tab8">8</a></li>
-            <li><a href="#tab9">9</a></li>
-            <li><a href="#tab10">10</a></li>
-            <li><a href="#tab11">11</a></li>
-            <li><a href="#tab12">12</a></li>
-            <li><a href="#tab13">13</a></li>
-            <li><a href="#tab14">14</a></li>
-            <li><a href="#tab15">15</a></li>
-            <li><a href="#tab16">16</a></li>
-            <li><a href="#tab17">17</a></li>
-            <li><a href="#tab18">18</a></li>
-            <li><a href="#appendix">Appendix</a></li>
-        </ul>
-    </div>
 
-    <div class="content">
-        <div id="tab1">Content for tab 1</div>
-        <div id="tab2">Content for tab 2</div>
-        <div id="tab3">Content for tab 3</div>
-        <div id="tab4">Content for tab 4</div>
-        <div id="tab5">Content for tab 5</div>
-        <div id="tab6">Content for tab 6</div>
-        <div id="tab7">Content for tab 7</div>
-        <div id="tab8">Content for tab 8</div>
-        <div id="tab9">Content for tab 9</div>
-        <div id="tab10">Content for tab 10</div>
-        <div id="tab11">Content for tab 11</div>
-        <div id="tab12">Content for tab 12</div>
-        <div id="tab13">Content for tab 13</div>
-        <div id="tab14">Content for tab 14</div>
-        <div id="tab15">Content for tab 15</div>
-        <div id="tab16">Content for tab 16</div>
-        <div id="tab17">Content for tab 17</div>
-        <div id="tab18">Content for tab 18</div>
-        <div id="appendix">Content for appendix</div>
-    </div>
+<nav>
+    <a href="#architecture">1. Architecture</a>
+    <a href="#design">2. Design</a>
+    <a href="#development">3. Development</a>
+    <a href="#deployment">4. Deployment</a>
+    <a href="#testing">5. Testing</a>
+    <a href="#maintenance">6. Maintenance</a>
+    <a href="#scalability">7. Scalability</a>
+    <a href="#security">8. Security</a>
+    <a href="#performance">9. Performance</a>
+    <a href="#monitoring">10. Monitoring</a>
+    <a href="#troubleshooting">11. Troubleshooting</a>
+    <a href="#user-experience">12. User Experience</a>
+    <a href="#documentation">13. Documentation</a>
+    <a href="#feedback">14. Feedback</a>
+    <a href="#team">15. Team Collaboration</a>
+    <a href="#project-management">16. Project Management</a>
+    <a href="#stakeholders">17. Stakeholders</a>
+    <a href="#excel-reports">18. Excel Reports</a>
+    <a href="#appendix">Appendix</a>
+</nav>
+
+<section id="architecture">
+    <h2>1. Architecture</h2>
+    <p>Overview of the architecture.</p>
+    <p>Key Decisions:...</p>
+    <p>Flow:...</p>
+    <p>Logic/Algorithms:...</p>
+    <p>Edge Cases:...</p>
+    <p>Scaling:...</p>
+</section>
+
+<!-- Repeat similar structure for other sections -->
+
+<section id="appendix">
+    <h2>Appendix</h2>
+    <h3>Permission Matrix</h3>
+    <p>Details...</p>
+    <h3>Idempotency Rules</h3>
+    <p>Details...</p>
+    <h3>Event Catalog</h3>
+    <p>Details...</p>
+    <h3>Error Codes & Failure Handling</h3>
+    <p>Details...</p>
+    <h3>Excel Column Dictionary</h3>
+    <p>Details...</p>
+</section>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.2.0/mermaid.min.js"></script>
+<script>
+    document.querySelectorAll('pre code').forEach(block => {
+        const button = document.createElement('button');
+        button.innerText = 'Copy';
+        button.onclick = () => {
+            navigator.clipboard.writeText(block.innerText);
+            alert('Copied to clipboard!');
+        };
+        block.parentNode.insertBefore(button, block);
+    });
+</script>
+
 </body>
 </html>
