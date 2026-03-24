@@ -3,82 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.2.0/mermaid.min.css" />
-    <title>Documentation</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.0.2/mermaid.min.css" />
     <style>
-        body {font-family: Arial, sans-serif; margin: 0; padding: 0;}
-        nav {position: sticky; top: 0; background: #fff; border-bottom: 1px solid #ccc; display: flex; flex-wrap: wrap; overflow: auto;}
-        nav a {flex: 1; padding: 15px; text-align: center; text-decoration: none; color: #000;}
-        nav a:hover {background: #f0f0f0;}
-        section {padding: 20px;}
-        code {background-color: #f4f4f4; padding: 5px; border-radius: 3px;}
-        @media (max-width: 600px) {
-            nav a {font-size: 14px; padding: 10px;}
-        }
+        /* View Transition CSS */
+        body { font-family: Arial, sans-serif; background-color: #2C2C2C; color: #DADADA; }
+        .tab { display: inline-block; padding: 10px; margin: 5px; border-radius: 5px; cursor: pointer; }
+        .tab.active { background-color: #555; }
+        .container { padding: 20px; }
+        .section { display: none; }
+        .section.active { display: block; }
+        /* Add mobile responsiveness */
+        @media (max-width: 600px) { .tab { display: block; } }
     </style>
+    <title>Interactive Design Documentation</title>
 </head>
 <body>
+    <div class="tabs">
+        <!-- Sticky Numbered Tabs -->
+        <div class="tab" onclick="showSection(1)">1</div>
+        <div class="tab" onclick="showSection(2)">2</div>
+        <div class="tab" onclick="showSection(3)">3</div>
+        <div class="tab" onclick="showSection(4)">4</div>
+        <div class="tab" onclick="showSection(5)">5</div>
+        <div class="tab" onclick="showSection(6)">6</div>
+        <div class="tab" onclick="showSection(7)">7</div>
+        <div class="tab" onclick="showSection(8)">8</div>
+        <div class="tab" onclick="showSection(9)">9</div>
+        <div class="tab" onclick="showSection(10)">10</div>
+        <div class="tab" onclick="showSection(11)">11</div>
+        <div class="tab" onclick="showSection(12)">12</div>
+        <div class="tab" onclick="showSection(13)">13</div>
+        <div class="tab" onclick="showSection(14)">14</div>
+        <div class="tab" onclick="showSection(15)">15</div>
+        <div class="tab" onclick="showSection(16)">16</div>
+        <div class="tab" onclick="showSection(17)">17</div>
+        <div class="tab" onclick="showSection(18)">18</div>
+        <div class="tab" onclick="showSection('appendix')">Appendix</div>
+    </div>
 
-<nav>
-    <a href="#architecture">1. Architecture</a>
-    <a href="#design">2. Design</a>
-    <a href="#development">3. Development</a>
-    <a href="#deployment">4. Deployment</a>
-    <a href="#testing">5. Testing</a>
-    <a href="#maintenance">6. Maintenance</a>
-    <a href="#scalability">7. Scalability</a>
-    <a href="#security">8. Security</a>
-    <a href="#performance">9. Performance</a>
-    <a href="#monitoring">10. Monitoring</a>
-    <a href="#troubleshooting">11. Troubleshooting</a>
-    <a href="#user-experience">12. User Experience</a>
-    <a href="#documentation">13. Documentation</a>
-    <a href="#feedback">14. Feedback</a>
-    <a href="#team">15. Team Collaboration</a>
-    <a href="#project-management">16. Project Management</a>
-    <a href="#stakeholders">17. Stakeholders</a>
-    <a href="#excel-reports">18. Excel Reports</a>
-    <a href="#appendix">Appendix</a>
-</nav>
+    <div class="container">
+        <div id="section-1" class="section active"> <h2>1. Architecture</h2><p>Overview...</p> </div>
+        <div id="section-2" class="section"> <h2>2. Database</h2><p>Overview...</p> </div>
+        <div id="section-3" class="section"> <h2>3. Order State Machine</h2><p>Overview...</p> </div>
+        <div id="section-4" class="section"> <h2>4. Billing Engine</h2><p>Overview...</p> </div>
+        <div id="section-5" class="section"> <h2>5. Inventory Engine</h2><p>Overview...</p> </div>
+        <div id="section-6" class="section"> <h2>6. Financial Engine</h2><p>Overview...</p> </div>
+        <div id="section-7" class="section"> <h2>7. API Design</h2><p>Overview...</p> </div>
+        <div id="section-8" class="section"> <h2>8. Events</h2><p>Overview...</p> </div>
+        <div id="section-9" class="section"> <h2>9. Concurrency</h2><p>Overview...</p> </div>
+        <div id="section-10" class="section"> <h2>10. Offline Mode</h2><p>Overview...</p> </div>
+        <div id="section-11" class="section"> <h2>11. Caching Strategy</h2><p>Overview...</p> </div>
+        <div id="section-12" class="section"> <h2>12. Time Complexity Targets</h2><p>Overview...</p> </div>
+        <div id="section-13" class="section"> <h2>13. Permission Matrix</h2><p>Overview...</p> </div>
+        <div id="section-14" class="section"> <h2>14. UI Flows</h2><p>Overview...</p> </div>
+        <div id="section-15" class="section"> <h2>15. Swiggy/Zomato Integration Pipeline</h2><p>Overview...</p> </div>
+        <div id="section-16" class="section"> <h2>16. Failure Modes</h2><p>Overview...</p> </div>
+        <div id="section-17" class="section"> <h2>17. 3-Phase Scaling Plan</h2><p>Overview...</p> </div>
+        <div id="section-18" class="section"> <h2>18. Excel Report Column Definitions</h2><p>Overview...</p> </div>
+        <div id="appendix" class="section"> <h2>Appendix</h2><p>Includes permission matrix, API idempotency rules, event catalog, error codes & failure handling, Excel column dictionary.</p> </div>
+    </div>
 
-<section id="architecture">
-    <h2>1. Architecture</h2>
-    <p>Overview of the architecture.</p>
-    <p>Key Decisions:...</p>
-    <p>Flow:...</p>
-    <p>Logic/Algorithms:...</p>
-    <p>Edge Cases:...</p>
-    <p>Scaling:...</p>
-</section>
-
-<!-- Repeat similar structure for other sections -->
-
-<section id="appendix">
-    <h2>Appendix</h2>
-    <h3>Permission Matrix</h3>
-    <p>Details...</p>
-    <h3>Idempotency Rules</h3>
-    <p>Details...</p>
-    <h3>Event Catalog</h3>
-    <p>Details...</p>
-    <h3>Error Codes & Failure Handling</h3>
-    <p>Details...</p>
-    <h3>Excel Column Dictionary</h3>
-    <p>Details...</p>
-</section>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.2.0/mermaid.min.js"></script>
-<script>
-    document.querySelectorAll('pre code').forEach(block => {
-        const button = document.createElement('button');
-        button.innerText = 'Copy';
-        button.onclick = () => {
-            navigator.clipboard.writeText(block.innerText);
-            alert('Copied to clipboard!');
-        };
-        block.parentNode.insertBefore(button, block);
-    });
-</script>
-
+    <script>
+        function showSection(section) {
+            const sections = document.querySelectorAll('.section');
+            sections.forEach(sec => sec.classList.remove('active'));
+            document.getElementById(`section-${section}`).classList.add('active');
+        }
+        // Additional features like search and copy-to-clipboard can be added here.
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.0.2/mermaid.min.js"></script>
 </body>
 </html>
