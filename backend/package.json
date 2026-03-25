@@ -1,1 +1,19 @@
-{ "name": "backend", "version": "1.0.0", "main": "index.js", "scripts": { "test": "echo \"Error: no test specified\" && exit 1" }, "author": "", "license": "ISC" }
+PORT=4000
+NODE_ENV=development
+
+DATABASE_URL=postgres://pos_user:pos_password@localhost:5432/pos_db
+
+PGHOST=localhost
+PGPORT=5432
+PGDATABASE=pos_db
+PGUSER=pos_user
+PGPASSWORD=pos_password
+
+JWT_ACCESS_SECRET=change-me-access
+JWT_REFRESH_SECRET=change-me-refresh
+JWT_ACCESS_TTL_SECONDS=900
+JWT_REFRESH_TTL_SECONDS=2592000
+
+COOKIE_SECURE=false
+COOKIE_SAME_SITE=lax
+COOKIE_DOMAIN=
